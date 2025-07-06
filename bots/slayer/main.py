@@ -9,6 +9,31 @@ import discord
 from discord.ext import commands
 from discord import app_commands
 
+
+import asyncio, asyncpg, os, discord
+
+DB_URL = os.getenv("DATABASE_URL")
+
+async def scoreboard_embed():
+    pool = await asyncpg.create_pool(DB_URL)
+    query = """SELECT player, sum(points) AS pts
+               FROM loot_events GROUP BY player ORDER BY pts DESC LIMIT 10"""
+    rows = await pool.fetch(query)
+    embed = discord.Embed(
+        title="Slay-That-Again – Top 10",
+        colour=0x77ff77
+    )
+    for idx, r in enumerate(rows, 1):
+        embed.add_field(name=f"#{idx}  {r['player']}", value=f"{r['pts']} pts", inline=False)
+    return embed
+
+@tree.command(name="scoreboard", description="Show current leaderboard")
+async def scoreboard_cmd(inter: discord.Interaction):
+    await inter.response.defer()
+    embed = await scoreboard_embed()
+    await inter.followup.send(embed=embed)
+
+
 # ── Intents & Bot object ────────────────────────────────────────────
 intents = discord.Intents.default()
 bot     = commands.Bot(command_prefix="!", intents=intents)
